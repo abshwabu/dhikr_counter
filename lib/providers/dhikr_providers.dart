@@ -4,6 +4,7 @@ import '../models/daily_entry.dart';
 import '../models/dhikr_set.dart';
 import '../models/streak_data.dart';
 import '../services/dhikr_repository.dart';
+import '../services/streak_service.dart';
 
 final dhikrRepositoryProvider = Provider<DhikrRepository>((ref) {
   return DhikrRepository();
@@ -110,6 +111,15 @@ class StreakNotifier extends StateNotifier<StreakData> {
   Future<void> save(StreakData data) async {
     await _repository.saveStreakData(data);
     state = data;
+  }
+
+  /// Applies the Step 9 streak update when all dhikr are done for today.
+  /// Returns the new streak when updated, or `null` if already counted today.
+  Future<StreakData?> recordDayComplete() async {
+    final updated = updateStreakForCompletedDay(state);
+    if (updated == null) return null;
+    await save(updated);
+    return updated;
   }
 
   void refresh() {
