@@ -10,20 +10,15 @@ class DhikrSetCard extends StatelessWidget {
     required this.dhikrSet,
     required this.entry,
     required this.onTap,
+    this.onLongPress,
   });
 
   final DhikrSet dhikrSet;
   final DailyEntry? entry;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
-  Color get _accent {
-    try {
-      final hex = dhikrSet.colorHex.replaceFirst('#', '');
-      return Color(int.parse('FF$hex', radix: 16));
-    } catch (_) {
-      return AppTheme.primaryGreen;
-    }
-  }
+  Color get _accent => AppTheme.colorFromHex(dhikrSet.colorHex);
 
   bool get _isCompleted {
     final count = entry?.count ?? 0;
@@ -45,6 +40,7 @@ class DhikrSetCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(16),
         child: Ink(
           decoration: BoxDecoration(

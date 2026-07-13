@@ -86,6 +86,13 @@ class HomeScreen extends ConsumerWidget {
                           ),
                         );
                       },
+                      onLongPress: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => AddDhikrScreen(existing: set),
+                          ),
+                        );
+                      },
                     ),
                   );
                 }),

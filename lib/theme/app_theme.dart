@@ -9,6 +9,27 @@ class AppTheme {
   static const Color lightGold = Color(0xFFF5E6B8);
   static const Color cream = Color(0xFFFFF8E7);
 
+  /// Fixed palette for dhikr set color chips (not a free color wheel).
+  static const List<String> dhikrColorPalette = [
+    '#1B5E20',
+    '#D4AF37',
+    '#1565C0',
+    '#6A1B9A',
+    '#BF360C',
+    '#00695C',
+    '#5D4037',
+    '#37474F',
+  ];
+
+  static Color colorFromHex(String hex, {Color fallback = primaryGreen}) {
+    try {
+      final cleaned = hex.replaceFirst('#', '');
+      return Color(int.parse('FF$cleaned', radix: 16));
+    } catch (_) {
+      return fallback;
+    }
+  }
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
