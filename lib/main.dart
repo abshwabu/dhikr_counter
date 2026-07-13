@@ -6,6 +6,7 @@ import 'models/daily_entry.dart';
 import 'models/dhikr_set.dart';
 import 'models/streak_data.dart';
 import 'screens/home_screen.dart';
+import 'services/seed_data.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
@@ -20,7 +21,10 @@ Future<void> main() async {
     Hive.openBox<DhikrSet>('dhikrSets'),
     Hive.openBox<DailyEntry>('dailyEntries'),
     Hive.openBox<StreakData>('streak'),
+    Hive.openBox('settings'),
   ]);
+
+  await seedDefaultDhikrSets();
 
   runApp(const ProviderScope(child: DhikrCounterApp()));
 }
