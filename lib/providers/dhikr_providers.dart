@@ -4,7 +4,7 @@ import '../models/daily_entry.dart';
 import '../models/dhikr_set.dart';
 import '../models/streak_data.dart';
 import '../services/dhikr_repository.dart';
-import '../services/streak_service.dart';
+import '../services/streak_calculator.dart';
 
 final dhikrRepositoryProvider = Provider<DhikrRepository>((ref) {
   return DhikrRepository();
@@ -113,13 +113,24 @@ class StreakNotifier extends StateNotifier<StreakData> {
     state = data;
   }
 
-  /// Applies the Step 9 streak update when all dhikr are done for today.
-  /// Returns the new streak when updated, or `null` if already counted today.
-  Future<StreakData?> recordDayComplete() async {
-    final updated = updateStreakForCompletedDay(state);
-    if (updated == null) return null;
+  /// Applies streak update when all dhikr are done for [todayDateString].
+  /// Returns updated data, or `null` if today was already counted.
+  Future<StreakData?> recordDayComplete({String? todayDateString}) async {
+    final today = todayDateString ?? _todayString();
+    if (state.lastCompletedDate == today) {
+      return null;
+    }
+    final updated = updateStreakOnCompletion(state, today);
     await save(updated);
     return updated;
+  }
+
+  static String _todayString() {
+    final now = DateTime.now();
+    final y = now.year.toString().padLeft(4, '0');
+    final m = now.month.toString().padLeft(2, '0');
+    final d = now.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
   }
 
   void refresh() {

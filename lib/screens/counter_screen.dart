@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/daily_entry.dart';
 import '../models/dhikr_set.dart';
 import '../providers/dhikr_providers.dart';
+import '../services/streak_calculator.dart';
 import '../theme/app_theme.dart';
 
 class CounterScreen extends ConsumerStatefulWidget {
@@ -57,10 +58,8 @@ class _CounterScreenState extends ConsumerState<CounterScreen>
     return entry.completedAt != null || entry.count >= set.targetCount;
   }
 
-  bool _allCompleted(List<DhikrSet> sets, Map<String, DailyEntry> entries) {
-    if (sets.isEmpty) return false;
-    return sets.every((set) => _isCompleted(set, entries[set.id]));
-  }
+  List<DailyEntry> _entriesList(Map<String, DailyEntry> entries) =>
+      entries.values.toList();
 
   Color _accentFor(DhikrSet set) {
     try {
@@ -77,7 +76,8 @@ class _CounterScreenState extends ConsumerState<CounterScreen>
     final sets = ref.read(dhikrSetsProvider);
     final entriesBefore = ref.read(todayEntriesProvider);
     final wasCompleted = _isCompleted(set, entriesBefore[set.id]);
-    final allDoneBefore = _allCompleted(sets, entriesBefore);
+    final dayCompleteBefore =
+        isDayComplete(sets, _entriesList(entriesBefore));
 
     setState(() => _busy = true);
     try {
@@ -86,7 +86,8 @@ class _CounterScreenState extends ConsumerState<CounterScreen>
 
       final entriesAfter = ref.read(todayEntriesProvider);
       final nowCompleted = _isCompleted(set, entriesAfter[set.id]);
-      final allDoneAfter = _allCompleted(sets, entriesAfter);
+      final dayCompleteAfter =
+          isDayComplete(sets, _entriesList(entriesAfter));
 
       if (!wasCompleted && nowCompleted) {
         await HapticFeedback.mediumImpact();
@@ -95,7 +96,7 @@ class _CounterScreenState extends ConsumerState<CounterScreen>
         _showDhikrCompleteToast(set);
       }
 
-      if (!allDoneBefore && allDoneAfter) {
+      if (!dayCompleteBefore && dayCompleteAfter) {
         final updated =
             await ref.read(streakProvider.notifier).recordDayComplete();
         if (!mounted) return;
