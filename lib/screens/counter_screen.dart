@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/daily_entry.dart';
 import '../models/dhikr_set.dart';
 import '../providers/dhikr_providers.dart';
+import '../providers/settings_providers.dart';
 import '../services/streak_calculator.dart';
 import '../theme/app_theme.dart';
 
@@ -82,7 +82,7 @@ class _CounterScreenState extends ConsumerState<CounterScreen>
     setState(() => _busy = true);
     try {
       await ref.read(todayEntriesActionsProvider).increment(set.id);
-      await HapticFeedback.lightImpact();
+      await playTapFeedback(ref);
 
       final entriesAfter = ref.read(todayEntriesProvider);
       final nowCompleted = _isCompleted(set, entriesAfter[set.id]);
@@ -90,7 +90,7 @@ class _CounterScreenState extends ConsumerState<CounterScreen>
           isDayComplete(sets, _entriesList(entriesAfter));
 
       if (!wasCompleted && nowCompleted) {
-        await HapticFeedback.mediumImpact();
+        await playTapFeedback(ref, stronger: true);
         _pulseController.forward(from: 0);
         if (!mounted) return;
         _showDhikrCompleteToast(set);
@@ -101,7 +101,7 @@ class _CounterScreenState extends ConsumerState<CounterScreen>
             await ref.read(streakProvider.notifier).recordDayComplete();
         if (!mounted) return;
         if (updated != null) {
-          await HapticFeedback.mediumImpact();
+          await playTapFeedback(ref, stronger: true);
           _showStreakDayCompleteToast(updated.currentStreak);
         }
       }

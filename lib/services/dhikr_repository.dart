@@ -12,11 +12,13 @@ class DhikrRepository {
     Box<DailyEntry>? dailyEntriesBox,
     Box<StreakData>? streakBox,
     Uuid? uuid,
+    String Function()? todayProvider,
   })  : _dhikrSetsBox = dhikrSetsBox ?? Hive.box<DhikrSet>('dhikrSets'),
         _dailyEntriesBox =
             dailyEntriesBox ?? Hive.box<DailyEntry>('dailyEntries'),
         _streakBox = streakBox ?? Hive.box<StreakData>('streak'),
-        _uuid = uuid ?? const Uuid();
+        _uuid = uuid ?? const Uuid(),
+        _todayProvider = todayProvider;
 
   static const _streakKey = 'data';
   static final _dateFormat = DateFormat('yyyy-MM-dd');
@@ -25,6 +27,7 @@ class DhikrRepository {
   final Box<DailyEntry> _dailyEntriesBox;
   final Box<StreakData> _streakBox;
   final Uuid _uuid;
+  final String Function()? _todayProvider;
 
   List<DhikrSet> getAllDhikrSets() => _dhikrSetsBox.values.toList();
 
@@ -41,7 +44,7 @@ class DhikrRepository {
   }
 
   Future<DailyEntry> getEntryForToday(String dhikrSetId) async {
-    final today = _todayString();
+    final today = currentDateKey();
     final key = _entryKey(dhikrSetId, today);
     final existing = _dailyEntriesBox.get(key);
     if (existing != null) {
@@ -90,7 +93,22 @@ class DhikrRepository {
   int getTotalDhikrCount() =>
       _dailyEntriesBox.values.fold<int>(0, (sum, entry) => sum + entry.count);
 
-  String _todayString() => _dateFormat.format(DateTime.now());
+  /// Soft reset: removes custom dhikr sets, all entries, and streak data.
+  /// Built-in (non-custom) sets are kept.
+  Future<void> resetAllUserData() async {
+    final customIds = _dhikrSetsBox.values
+        .where((set) => set.isCustom)
+        .map((set) => set.id)
+        .toList();
+    for (final id in customIds) {
+      await _dhikrSetsBox.delete(id);
+    }
+    await _dailyEntriesBox.clear();
+    await _streakBox.clear();
+  }
+
+  String currentDateKey() =>
+      _todayProvider?.call() ?? _dateFormat.format(DateTime.now());
 
   String _entryKey(String dhikrSetId, String date) => '$dhikrSetId|$date';
 }

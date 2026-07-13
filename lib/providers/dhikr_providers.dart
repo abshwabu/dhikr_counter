@@ -5,9 +5,12 @@ import '../models/dhikr_set.dart';
 import '../models/streak_data.dart';
 import '../services/dhikr_repository.dart';
 import '../services/streak_calculator.dart';
+import 'settings_providers.dart';
 
 final dhikrRepositoryProvider = Provider<DhikrRepository>((ref) {
-  return DhikrRepository();
+  return DhikrRepository(
+    todayProvider: () => ref.read(currentDateKeyProvider),
+  );
 });
 
 // --- Dhikr sets ---
@@ -70,7 +73,7 @@ class TodayEntriesNotifier extends StateNotifier<Map<String, DailyEntry>> {
   }
 }
 
-final _todayEntriesNotifierProvider =
+final todayEntriesNotifierProvider =
     StateNotifierProvider<TodayEntriesNotifier, Map<String, DailyEntry>>((ref) {
   final notifier = TodayEntriesNotifier(ref.watch(dhikrRepositoryProvider));
 
@@ -80,23 +83,33 @@ final _todayEntriesNotifierProvider =
     fireImmediately: true,
   );
 
+  // Reload when the application day key changes (midnight ↔ Fajr).
+  ref.listen<String>(
+    currentDateKeyProvider,
+    (previous, next) {
+      if (previous != next) {
+        notifier.loadForSets(ref.read(dhikrSetsProvider));
+      }
+    },
+  );
+
   return notifier;
 });
 
 /// Today's [DailyEntry] for each dhikr set, derived from [dhikrSetsProvider].
 final todayEntriesProvider = Provider<Map<String, DailyEntry>>((ref) {
-  return ref.watch(_todayEntriesNotifierProvider);
+  return ref.watch(todayEntriesNotifierProvider);
 });
 
 /// Use this for increment/reset so widgets never touch Hive directly.
 final todayEntriesActionsProvider = Provider<TodayEntriesNotifier>((ref) {
-  return ref.watch(_todayEntriesNotifierProvider.notifier);
+  return ref.watch(todayEntriesNotifierProvider.notifier);
 });
 
 // --- Streak ---
 
 class StreakNotifier extends StateNotifier<StreakData> {
-  StreakNotifier(this._repository)
+  StreakNotifier(this._repository, this._todayProvider)
       : super(
           _repository.getStreakData() ??
               StreakData(
@@ -107,6 +120,7 @@ class StreakNotifier extends StateNotifier<StreakData> {
         );
 
   final DhikrRepository _repository;
+  final String Function() _todayProvider;
 
   Future<void> save(StreakData data) async {
     await _repository.saveStreakData(data);
@@ -116,21 +130,13 @@ class StreakNotifier extends StateNotifier<StreakData> {
   /// Applies streak update when all dhikr are done for [todayDateString].
   /// Returns updated data, or `null` if today was already counted.
   Future<StreakData?> recordDayComplete({String? todayDateString}) async {
-    final today = todayDateString ?? _todayString();
+    final today = todayDateString ?? _todayProvider();
     if (state.lastCompletedDate == today) {
       return null;
     }
     final updated = updateStreakOnCompletion(state, today);
     await save(updated);
     return updated;
-  }
-
-  static String _todayString() {
-    final now = DateTime.now();
-    final y = now.year.toString().padLeft(4, '0');
-    final m = now.month.toString().padLeft(2, '0');
-    final d = now.day.toString().padLeft(2, '0');
-    return '$y-$m-$d';
   }
 
   void refresh() {
@@ -145,7 +151,10 @@ class StreakNotifier extends StateNotifier<StreakData> {
 
 final streakProvider =
     StateNotifierProvider<StreakNotifier, StreakData>((ref) {
-  return StreakNotifier(ref.watch(dhikrRepositoryProvider));
+  return StreakNotifier(
+    ref.watch(dhikrRepositoryProvider),
+    () => ref.read(currentDateKeyProvider),
+  );
 });
 
 // --- Active dhikr (counter screen) ---
