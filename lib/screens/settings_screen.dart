@@ -199,6 +199,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  String _formatReminderTime(AppSettings settings) {
+    final time = TimeOfDay(
+      hour: settings.reminderHour,
+      minute: settings.reminderMinute,
+    );
+    return time.format(context);
+  }
+
+  Future<void> _pickReminderTime(AppSettings settings) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: settings.reminderHour,
+        minute: settings.reminderMinute,
+      ),
+    );
+    if (picked == null || !mounted) return;
+    await ref.read(settingsProvider.notifier).setReminderTime(
+          hour: picked.hour,
+          minute: picked.minute,
+        );
+  }
+
   Future<void> _confirmResetAll() async {
     final first = await showDialog<bool>(
       context: context,
@@ -308,6 +331,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 onChanged: (value) {
                   ref.read(settingsProvider.notifier).setSoundEnabled(value);
                 },
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _SectionCard(
+            title: 'Daily reminder',
+            children: [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Local reminder'),
+                subtitle: const Text(
+                  'Offline notification with today’s progress',
+                ),
+                activeThumbColor: AppTheme.accentGold,
+                activeTrackColor: AppTheme.primaryGreen,
+                value: settings.reminderEnabled,
+                onChanged: (value) async {
+                  final ok = await ref
+                      .read(settingsProvider.notifier)
+                      .setReminderEnabled(value);
+                  if (!ok && mounted) {
+                    _showMessage(
+                      'Notification permission was denied. Enable it in system settings.',
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                enabled: settings.reminderEnabled,
+                title: const Text('Reminder time'),
+                subtitle: Text(_formatReminderTime(settings)),
+                trailing: const Icon(Icons.schedule_outlined),
+                onTap: settings.reminderEnabled
+                    ? () => _pickReminderTime(settings)
+                    : null,
               ),
             ],
           ),

@@ -11,6 +11,9 @@ class AppSettings {
     this.latitude,
     this.longitude,
     this.locationLabel,
+    this.reminderEnabled = false,
+    this.reminderHour = 20,
+    this.reminderMinute = 0,
   });
 
   final bool hapticEnabled;
@@ -19,6 +22,9 @@ class AppSettings {
   final double? latitude;
   final double? longitude;
   final String? locationLabel;
+  final bool reminderEnabled;
+  final int reminderHour;
+  final int reminderMinute;
 
   bool get hasLocation => latitude != null && longitude != null;
 
@@ -29,6 +35,9 @@ class AppSettings {
     double? latitude,
     double? longitude,
     String? locationLabel,
+    bool? reminderEnabled,
+    int? reminderHour,
+    int? reminderMinute,
     bool clearLocation = false,
   }) {
     return AppSettings(
@@ -39,6 +48,9 @@ class AppSettings {
       longitude: clearLocation ? null : (longitude ?? this.longitude),
       locationLabel:
           clearLocation ? null : (locationLabel ?? this.locationLabel),
+      reminderEnabled: reminderEnabled ?? this.reminderEnabled,
+      reminderHour: reminderHour ?? this.reminderHour,
+      reminderMinute: reminderMinute ?? this.reminderMinute,
     );
   }
 }

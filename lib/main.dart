@@ -5,7 +5,10 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'models/daily_entry.dart';
 import 'models/dhikr_set.dart';
 import 'models/streak_data.dart';
+import 'providers/settings_providers.dart';
 import 'screens/home_screen.dart';
+import 'services/dhikr_repository.dart';
+import 'services/reminder_service.dart';
 import 'services/seed_data.dart';
 import 'theme/app_theme.dart';
 
@@ -25,12 +28,31 @@ Future<void> main() async {
   ]);
 
   await seedDefaultDhikrSets();
+  await ReminderService.instance.init();
 
   runApp(const ProviderScope(child: DhikrCounterApp()));
 }
 
-class DhikrCounterApp extends StatelessWidget {
+class DhikrCounterApp extends ConsumerStatefulWidget {
   const DhikrCounterApp({super.key});
+
+  @override
+  ConsumerState<DhikrCounterApp> createState() => _DhikrCounterAppState();
+}
+
+class _DhikrCounterAppState extends ConsumerState<DhikrCounterApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ReminderService.instance.sync(
+        settings: ref.read(settingsProvider),
+        repository: DhikrRepository(
+          todayProvider: () => ref.read(currentDateKeyProvider),
+        ),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

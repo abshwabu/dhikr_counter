@@ -4,6 +4,8 @@ import '../models/daily_entry.dart';
 import '../models/dhikr_set.dart';
 import '../models/streak_data.dart';
 import '../services/dhikr_repository.dart';
+import '../services/reminder_service.dart';
+import '../services/settings_repository.dart';
 import '../services/streak_calculator.dart';
 import 'settings_providers.dart';
 
@@ -63,13 +65,23 @@ class TodayEntriesNotifier extends StateNotifier<Map<String, DailyEntry>> {
   Future<DailyEntry> increment(String dhikrSetId) async {
     final entry = await _repository.incrementCount(dhikrSetId);
     state = {...state, dhikrSetId: entry};
+    await _refreshReminderBody();
     return entry;
   }
 
   Future<DailyEntry> reset(String dhikrSetId) async {
     final entry = await _repository.resetToday(dhikrSetId);
     state = {...state, dhikrSetId: entry};
+    await _refreshReminderBody();
     return entry;
+  }
+
+  Future<void> _refreshReminderBody() async {
+    final settings = SettingsRepository().load();
+    await ReminderService.instance.sync(
+      settings: settings,
+      repository: _repository,
+    );
   }
 }
 
