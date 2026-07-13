@@ -4,9 +4,11 @@ import 'package:intl/intl.dart';
 
 import '../models/daily_entry.dart';
 import '../models/dhikr_set.dart';
+import '../navigation/app_transitions.dart';
 import '../providers/dhikr_providers.dart';
 import '../theme/app_theme.dart';
 import '../widgets/contribution_heatmap.dart';
+import '../widgets/empty_state_panel.dart';
 import 'export_screen.dart';
 
 class StreakScreen extends ConsumerWidget {
@@ -38,7 +40,6 @@ class StreakScreen extends ConsumerWidget {
           completed++;
         }
       }
-      // Only mark days that have any recorded activity for current sets.
       final hasActivity = sets.any((set) => dayEntries.containsKey(set.id));
       if (hasActivity) {
         intensities[entry.key] = completed / sets.length;
@@ -54,6 +55,9 @@ class StreakScreen extends ConsumerWidget {
     final entries = ref.watch(allDailyEntriesProvider);
     final totalCount = ref.watch(totalDhikrCountProvider);
     final intensities = _intensitiesFor(sets, entries);
+    final isDayOne = streak.currentStreak <= 1 &&
+        streak.totalDaysCompleted <= 1 &&
+        intensities.isEmpty;
 
     return Scaffold(
       appBar: AppBar(
@@ -62,19 +66,22 @@ class StreakScreen extends ConsumerWidget {
           IconButton(
             tooltip: 'Share progress',
             icon: const Icon(Icons.share_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const ExportScreen(),
-                ),
-              );
-            },
+            onPressed: () => pushAppRoute(context, const ExportScreen()),
           ),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
+          if (isDayOne) ...[
+            EmptyStatePanel(
+              icon: Icons.local_fire_department_outlined,
+              title: 'Day one begins here',
+              message:
+                  'Complete every dhikr set today to light your first streak day. Consistency grows quietly.',
+            ),
+            const SizedBox(height: 24),
+          ],
           Row(
             children: [
               Expanded(
@@ -104,7 +111,9 @@ class StreakScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Shade shows how many of your dhikr sets were completed that day.',
+            intensities.isEmpty
+                ? 'Your heatmap will fill in as you complete dhikr each day.'
+                : 'Shade shows how many of your dhikr sets were completed that day.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: AppTheme.darkGreen.withValues(alpha: 0.55),
                 ),

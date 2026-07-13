@@ -139,4 +139,45 @@ void main() {
       expect(updated.totalDaysCompleted, 21);
     });
   });
+
+  group('full user flow', () {
+    test('complete all defaults -> streak 1; skip a day -> resets to 1', () {
+      // Mirror seeded defaults' structure (5 sets with targets).
+      final defaults = [
+        _set(id: 'subhanallah', targetCount: 33),
+        _set(id: 'alhamdulillah', targetCount: 33),
+        _set(id: 'allahu_akbar', targetCount: 34),
+        _set(id: 'astaghfirullah', targetCount: 100),
+        _set(id: 'tahlil', targetCount: 100),
+      ];
+
+      final day1Entries = defaults
+          .map(
+            (set) => _entry(
+              setId: set.id,
+              count: set.targetCount,
+              date: '2026-07-10',
+            ),
+          )
+          .toList();
+
+      expect(isDayComplete(defaults, day1Entries), isTrue);
+
+      var streak = StreakData(
+        currentStreak: 0,
+        longestStreak: 0,
+        totalDaysCompleted: 0,
+      );
+      streak = updateStreakOnCompletion(streak, '2026-07-10');
+      expect(streak.currentStreak, 1);
+      expect(streak.totalDaysCompleted, 1);
+
+      // Skip 2026-07-11, complete again on 2026-07-12
+      final afterGap = updateStreakOnCompletion(streak, '2026-07-12');
+      expect(afterGap.currentStreak, 1);
+      expect(afterGap.longestStreak, 1);
+      expect(afterGap.totalDaysCompleted, 2);
+      expect(afterGap.lastCompletedDate, '2026-07-12');
+    });
+  });
 }
