@@ -8,8 +8,13 @@ import '../models/app_settings.dart';
 import '../models/daily_entry.dart';
 import '../models/dhikr_set.dart';
 import 'dhikr_repository.dart';
+import 'streak_calculator.dart';
 
 /// Offline daily reminders via [flutter_local_notifications].
+///
+/// Reminders only fire when today's streak is still incomplete. Completing
+/// all dhikr cancels today's pending reminder and rolls the schedule to
+/// tomorrow so a finished day stays quiet.
 class ReminderService {
   ReminderService._();
 
@@ -100,18 +105,34 @@ class ReminderService {
         return;
       }
 
+      final dayComplete = isTodayComplete(repository);
       await scheduleDaily(
         hour: settings.reminderHour,
         minute: settings.reminderMinute,
-        body: buildBody(repository),
+        body: buildBody(repository, dayComplete: dayComplete),
+        skipToday: dayComplete,
       );
     } catch (error) {
       debugPrint('ReminderService.sync failed: $error');
     }
   }
 
+  /// True when every dhikr set has hit its target for the app's current day.
+  bool isTodayComplete(DhikrRepository repository) {
+    final sets = repository.getAllDhikrSets();
+    final today = repository.currentDateKey();
+    final entries = repository
+        .getAllDailyEntries()
+        .where((entry) => entry.date == today)
+        .toList();
+    return isDayComplete(sets, entries);
+  }
+
   /// Builds reminder copy from current Hive data when available.
-  String buildBody(DhikrRepository repository) {
+  String buildBody(
+    DhikrRepository repository, {
+    bool? dayComplete,
+  }) {
     try {
       final sets = repository.getAllDhikrSets();
       if (sets.isEmpty) {
@@ -119,9 +140,19 @@ class ReminderService {
       }
 
       final today = repository.currentDateKey();
+      final todayEntries = repository
+          .getAllDailyEntries()
+          .where((entry) => entry.date == today)
+          .toList();
+      final complete = dayComplete ?? isDayComplete(sets, todayEntries);
+
+      // Next fire is tomorrow after a finished day — keep copy generic.
+      if (complete) {
+        return 'Your daily dhikr is waiting — a few quiet moments go a long way.';
+      }
+
       final bySetId = <String, DailyEntry>{
-        for (final entry in repository.getAllDailyEntries())
-          if (entry.date == today) entry.dhikrSetId: entry,
+        for (final entry in todayEntries) entry.dhikrSetId: entry,
       };
 
       var completed = 0;
@@ -142,10 +173,15 @@ class ReminderService {
     required int hour,
     required int minute,
     required String body,
+    bool skipToday = false,
   }) async {
     await cancel();
 
-    final scheduled = _nextInstanceOfTime(hour, minute);
+    final scheduled = nextReminderDateTime(
+      hour: hour,
+      minute: minute,
+      skipToday: skipToday,
+    );
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
         _channelId,
@@ -174,17 +210,24 @@ class ReminderService {
     await _plugin.cancel(id: _notificationId);
   }
 
-  tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
-    final now = tz.TZDateTime.now(tz.local);
+  /// Next local fire time. When [skipToday] is true (streak already done),
+  /// always rolls to tomorrow even if today's reminder hour is still ahead.
+  static tz.TZDateTime nextReminderDateTime({
+    required int hour,
+    required int minute,
+    bool skipToday = false,
+    tz.TZDateTime? now,
+  }) {
+    final current = now ?? tz.TZDateTime.now(tz.local);
     var scheduled = tz.TZDateTime(
-      tz.local,
-      now.year,
-      now.month,
-      now.day,
+      current.location,
+      current.year,
+      current.month,
+      current.day,
       hour,
       minute,
     );
-    if (!scheduled.isAfter(now)) {
+    if (skipToday || !scheduled.isAfter(current)) {
       scheduled = scheduled.add(const Duration(days: 1));
     }
     return scheduled;
