@@ -151,3 +151,15 @@ final streakProvider =
 // --- Active dhikr (counter screen) ---
 
 final activeDhikrIdProvider = StateProvider<String>((ref) => '');
+
+/// All persisted daily entries; refreshes when today's entries change.
+final allDailyEntriesProvider = Provider<List<DailyEntry>>((ref) {
+  ref.watch(todayEntriesProvider);
+  return ref.watch(dhikrRepositoryProvider).getAllDailyEntries();
+});
+
+/// Sum of every entry count ever recorded.
+final totalDhikrCountProvider = Provider<int>((ref) {
+  ref.watch(todayEntriesProvider);
+  return ref.watch(dhikrRepositoryProvider).getTotalDhikrCount();
+});

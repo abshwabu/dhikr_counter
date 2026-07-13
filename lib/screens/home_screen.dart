@@ -8,6 +8,7 @@ import '../widgets/streak_banner.dart';
 import 'add_dhikr_screen.dart';
 import 'counter_screen.dart';
 import 'settings_screen.dart';
+import 'streak_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -28,6 +29,17 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Dhikr Counter'),
         actions: [
+          IconButton(
+            tooltip: 'Streak',
+            icon: const Icon(Icons.local_fire_department_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const StreakScreen(),
+                ),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Settings',
             icon: const Icon(Icons.settings_outlined),

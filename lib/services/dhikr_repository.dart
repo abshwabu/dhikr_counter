@@ -85,6 +85,11 @@ class DhikrRepository {
     await _streakBox.put(_streakKey, streakData);
   }
 
+  List<DailyEntry> getAllDailyEntries() => _dailyEntriesBox.values.toList();
+
+  int getTotalDhikrCount() =>
+      _dailyEntriesBox.values.fold<int>(0, (sum, entry) => sum + entry.count);
+
   String _todayString() => _dateFormat.format(DateTime.now());
 
   String _entryKey(String dhikrSetId, String date) => '$dhikrSetId|$date';
